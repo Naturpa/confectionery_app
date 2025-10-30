@@ -295,11 +295,58 @@ class ConfectioneryApp(QMainWindow):
         self.clientsTable.itemClicked.connect(self.client_table_clicked)
 
         # Десерты
-        self.addDessertBtn.clicked.connect(self.add_dessert)
-        self.updateDessertBtn.clicked.connect(self.update_dessert)
+        self.addDessertBtn.clicked.connect(self.show_add_dessert_dialog)
+        self.updateDessertBtn.clicked.connect(self.show_edit_dessert_dialog)
         self.deleteDessertBtn.clicked.connect(self.delete_dessert)
         self.clearDessertBtn.clicked.connect(self.clear_dessert_form)
         self.dessertsTable.itemClicked.connect(self.dessert_table_clicked)
+
+    def show_add_dessert_dialog(self):
+        """Показать диалог добавления десерта"""
+        try:
+            dialog = DessertDialog(parent=self)
+            if dialog.exec_() == QDialog.Accepted:
+                data = dialog.get_dessert_data()
+                if data:
+                    name, price_kg, price_unit, composition = data
+                    self.db.add_dessert(name, price_kg, price_unit, composition)
+                    QMessageBox.information(self, "Успех", "Десерт успешно добавлен!")
+                    self.load_desserts()
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось добавить десерт: {str(e)}")
+
+    def show_edit_dessert_dialog(self):
+        """Показать диалог редактирования десерта"""
+        try:
+            current_row = self.dessertsTable.currentRow()
+            if current_row == -1:
+                QMessageBox.warning(self, "Ошибка", "Выберите десерт для редактирования!")
+                return
+
+            dessert_id = int(self.dessertsTable.item(current_row, 0).text())
+
+            # Получаем данные десерта из БД
+            desserts = self.db.get_all_desserts()
+            dessert_data = next((d for d in desserts if d[0] == dessert_id), None)
+
+            if dessert_data:
+                dialog = DessertDialog(dessert_data, parent=self)
+                if dialog.exec_() == QDialog.Accepted:
+                    data = dialog.get_dessert_data()
+                    if data:
+                        name, price_kg, price_unit, composition = data
+                        self.db.update_dessert(dessert_id, name, price_kg, price_unit, composition)
+                        QMessageBox.information(self, "Успех", "Десерт успешно обновлен!")
+                        self.load_desserts()
+            else:
+                QMessageBox.warning(self, "Ошибка", "Десерт не найден!")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось обновить десерт: {str(e)}")
+
+    def get_dessert_by_id(self, dessert_id):
+        """Получить данные десерта по ID"""
+        desserts = self.db.get_all_desserts()
+        return next((d for d in desserts if d[0] == dessert_id), None)
 
     def setup_shortcuts(self):
         """Настройка горячих клавиш"""
